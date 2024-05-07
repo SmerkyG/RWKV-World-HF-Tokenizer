@@ -54,11 +54,11 @@ def convert_state_dict(state_dict):
 
         TIME_MIX_EXTRA_DIM = 32 # generate TIME_MIX for w,k,v,r,g
         state_dict[layer_name + '.time_maa_w1'] = (torch.zeros(n_embd, TIME_MIX_EXTRA_DIM*5).uniform_(-1e-4, 1e-4))
-        state_dict[layer_name + '.time_maa_w2'] = (torch.zeros(5, TIME_MIX_EXTRA_DIM, n_embd).uniform_(-1e-4, 1e-4))
+        state_dict[layer_name + '.time_maa_w2'] = torch.zeros(5, TIME_MIX_EXTRA_DIM, n_embd)
 
         TIME_DECAY_EXTRA_DIM = 64
         state_dict[layer_name + '.time_decay_w1'] = (torch.zeros(n_embd, TIME_DECAY_EXTRA_DIM).uniform_(-1e-4, 1e-4))
-        state_dict[layer_name + '.time_decay_w2'] = (torch.zeros(TIME_DECAY_EXTRA_DIM, dim_att).uniform_(-1e-4, 1e-4))
+        state_dict[layer_name + '.time_decay_w2'] = torch.zeros(TIME_DECAY_EXTRA_DIM, dim_att)
 
     print(f"n_layer: {n_layer}\nn_embd: {n_embd}")
 
