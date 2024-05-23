@@ -15,8 +15,8 @@
 """Tokenization classes for RWKV5."""
 
 import os
-from typing import TYPE_CHECKING, List, Optional, Tuple
 import re
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from transformers.tokenization_utils import AddedToken, PreTrainedTokenizer
 from transformers.utils import logging
@@ -37,7 +37,6 @@ PRETRAINED_VOCAB_FILES_MAP = {
 }
 
 
-
 def whitespace_tokenize(text):
     """Runs basic whitespace cleaning and splitting on a piece of text.
     The separators are kept
@@ -52,10 +51,9 @@ def whitespace_tokenize(text):
 class WordpieceTokenizer(object):
     """Runs WordPiece tokenization."""
 
-    def __init__(self, vocab, unk_token, max_input_chars_per_word=100):
+    def __init__(self, vocab, unk_token):
         self.vocab = vocab
         self.unk_token = unk_token
-        self.max_input_chars_per_word = max_input_chars_per_word
 
     def tokenize(self, text):
         """
@@ -75,10 +73,6 @@ class WordpieceTokenizer(object):
         output_tokens = []
         for token in whitespace_tokenize(text):
             chars = list(token)
-            if len(chars) > self.max_input_chars_per_word:
-                output_tokens.append(self.unk_token)
-                continue
-
             is_bad = False
             start = 0
             sub_tokens = []
@@ -94,9 +88,12 @@ class WordpieceTokenizer(object):
                 if cur_substr is None:
                     is_bad = True
                     break
-                sub_tokens.append(cur_substr.decode())
+                try:
+                    cur_substr = cur_substr.decode()
+                except UnicodeDecodeError:
+                    cur_substr = str(cur_substr)
+                sub_tokens.append(cur_substr)
                 start = end
-
             if is_bad:
                 output_tokens.append(self.unk_token)
             else:
@@ -111,7 +108,7 @@ class Rwkv5Tokenizer(PreTrainedTokenizer):
 
     model_input_names = ["input_ids", "attention_mask"]
 
-    def __init__(self, vocab_file, bos_token="<s>", eos_token="<s>", unk_token="<s>", pad_token="<s>",**kwargs):
+    def __init__(self, vocab_file, bos_token="<s>", eos_token="<s>", unk_token="<s>", **kwargs):
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 f"Can't find a vocabulary file at path '{vocab_file}'. To load the vocabulary from a Google pretrained"
@@ -130,7 +127,7 @@ class Rwkv5Tokenizer(PreTrainedTokenizer):
         self.decoder = {v: k for k, v in vocab.items()}
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.encoder, unk_token=str(unk_token))
         self._added_tokens_decoder = {0: AddedToken(str(bos_token))}
-        super().__init__(bos_token=bos_token, eos_token=eos_token, unk_token=unk_token, pad_token=pad_token, **kwargs)
+        super().__init__(bos_token=bos_token, eos_token=eos_token, unk_token=unk_token, **kwargs)
 
     @property
     def vocab_size(self):
@@ -146,7 +143,9 @@ class Rwkv5Tokenizer(PreTrainedTokenizer):
 
     def _convert_token_to_id(self, token):
         """Converts a token (byte) to an id using the vocab."""
-        if not isinstance(token, bytes):
+        if token.startswith("b'\\"):
+            token = eval(token)
+        elif not isinstance(token, bytes):
             token = token.encode("utf-8", errors="replace")
         return self.encoder.get(token, self.unk_token_id)
 
