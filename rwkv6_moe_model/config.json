@@ -1,0 +1,26 @@
+{
+  "architectures": [
+    "Rwkv6MoeForCausalLM"
+  ],
+  "auto_map": {
+      "AutoConfig": "configuration_rwkv6_moe.Rwkv6MoeConfig",
+      "AutoModelForCausalLM": "modeling_rwkv6_moe.Rwkv6MoeForCausalLM"
+  },
+  "attention_hidden_size": 4096,
+  "bos_token_id": 0,
+  "eos_token_id": 0,
+  "head_size": 64,
+  "head_size_divisor": 8,
+  "hidden_size": 4096,
+  "intermediate_size": null,
+  "layer_norm_epsilon": 1e-05,
+  "model_type": "rwkv6_moe",
+  "num_attention_heads": 64,
+  "num_experts": 8,
+  "num_hidden_layers": 32,
+  "rescale_every": 6,
+  "tie_word_embeddings": false,
+  "transformers_version": "4.34.0",
+  "use_cache": true,
+  "vocab_size": 65536
+}
