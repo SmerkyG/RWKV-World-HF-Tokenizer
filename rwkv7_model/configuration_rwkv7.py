@@ -56,9 +56,6 @@ class Rwkv7Config(PretrainedConfig):
             The id of the beginning of sentence token in the vocabulary. Defaults to 0.
         eos_token_id (`int`, *optional*, defaults to 0):
             The id of the end of sentence token in the vocabulary. Defaults to 0.
-        rescale_every (`int`, *optional*, defaults to 6):
-            At inference, the hidden states (and weights of the correponding output layers) are divided by 2 every
-            `rescale_every` layer. If set to 0 or a negative number, no rescale is done.
         tie_word_embeddings (`bool`, *optional*, defaults to `False`):
             Whether or not to tie the word embeddings with the input token embeddings.
         use_cache (`bool`, *optional*, defaults to `True`):
@@ -98,7 +95,6 @@ class Rwkv7Config(PretrainedConfig):
         layer_norm_epsilon=1e-5,
         bos_token_id=0,
         eos_token_id=0,
-        rescale_every=6, # FIXME - this should be in generation_config or somesuch
         tie_word_embeddings=False,
         use_cache=True,
         **kwargs,
@@ -115,7 +111,6 @@ class Rwkv7Config(PretrainedConfig):
         self.lora_rank_value_residual_mix = lora_rank_value_residual_mix
         self.lora_rank_gate = lora_rank_gate
         self.layer_norm_epsilon = layer_norm_epsilon
-        self.rescale_every = rescale_every
         self.use_cache = use_cache
 
         super().__init__(

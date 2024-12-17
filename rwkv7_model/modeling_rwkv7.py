@@ -670,7 +670,6 @@ class Rwkv7Model(Rwkv7PreTrainedModel):
         self.blocks = nn.ModuleList([Rwkv7Block(config, layer_id=idx) for idx in range(config.num_hidden_layers)])
         self.ln_out = nn.LayerNorm(config.hidden_size)
 
-        self.layers_are_rescaled = False
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
@@ -705,11 +704,6 @@ class Rwkv7Model(Rwkv7PreTrainedModel):
         )
         use_cache = use_cache if use_cache is not None else self.config.use_cache
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-
-        if self.training == self.layers_are_rescaled and (
-            self.embeddings.weight.dtype == torch.float16 or self.embeddings.weight.dtype == torch.bfloat16
-        ):
-            self._rescale_layers()
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
@@ -761,12 +755,6 @@ class Rwkv7Model(Rwkv7PreTrainedModel):
             hidden_states, state, v_first, attentions = block(
                 hidden_states, state=state, v_first=v_first, use_cache=use_cache, output_attentions=output_attentions, seq_mode=seq_mode
             )
-            if (
-                self.layers_are_rescaled
-                and self.config.rescale_every > 0
-                and (idx + 1) % self.config.rescale_every == 0
-            ):
-                hidden_states = hidden_states / 2
 
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
@@ -788,52 +776,6 @@ class Rwkv7Model(Rwkv7PreTrainedModel):
             hidden_states=all_hidden_states,  # None
             attentions=all_self_attentions,  # None
         )
-
-    def _rescale_layers(self):
-        # Layers should be rescaled for inference only.
-        if self.layers_are_rescaled == (not self.training):
-            return
-        if self.config.rescale_every > 0:
-            with torch.no_grad():
-                for block_id, block in enumerate(self.blocks):
-                    if self.training:
-                        block.attention.output.weight.mul_(2 ** int(block_id // self.config.rescale_every))
-                        block.feed_forward.value.weight.mul_(2 ** int(block_id // self.config.rescale_every))
-                    else:
-                        # Deal with quantization statistics
-                        if hasattr(block.attention.output.weight, "SCB"):
-                            block.attention.output.weight.SCB.div_(2 ** int(block_id // self.config.rescale_every))
-                            block.feed_forward.value.weight.SCB.div_(2 ** int(block_id // self.config.rescale_every))
-                        elif hasattr(block.attention.output.weight, "quant_state"):
-                            self._bnb_4bit_dequantize_and_rescale(block.attention.output, block_id)
-                            self._bnb_4bit_dequantize_and_rescale(block.feed_forward.value, block_id)
-                        else:
-                            block.attention.output.weight.div_(2 ** int(block_id // self.config.rescale_every))
-                            block.feed_forward.value.weight.div_(2 ** int(block_id // self.config.rescale_every))
-
-        self.layers_are_rescaled = not self.training
-
-    def _bnb_4bit_dequantize_and_rescale(self, target_layer, block_id):
-        r"""
-        Perform the dequantization and rescaling of the weights of a given layer. After that operation the layer will
-        be quantized again.
-        """
-        if not is_bitsandbytes_available():
-            raise ImportError("Please install bitsandbytes to use this method.")
-        import bitsandbytes as bnb
-
-        dequant_weights = bnb.functional.dequantize_4bit(target_layer.weight.data, target_layer.weight.quant_state)
-
-        dequant_weights.div_(2 ** int(block_id // self.config.rescale_every))
-
-        # re-quantize the model:
-        # we need to put it first on CPU then back to the device
-        # this will create an overhead :/
-        # We set requires_grad=False as we cannot compute gradients on top of 4bit parameters anyway and to avoid
-        # bugs with bnb
-        quant_weight = bnb.nn.Params4bit(dequant_weights.to("cpu"), requires_grad=False).to(dequant_weights.device)
-        setattr(target_layer, "weight", quant_weight)
-
 
 # copied from HuggingFace https://github.com/huggingface/transformers/blob/main/src/transformers/models/rwkv/modeling_rwkv.py
 @add_start_docstrings(
