@@ -86,7 +86,6 @@ class Rwkv7Config(PretrainedConfig):
         num_hidden_layers=24,
         attention_hidden_size=None,
         head_size=64,
-        head_size_divisor=8,
         intermediate_size=None,
         lora_rank_decay=None,
         lora_rank_iclr=None,
@@ -104,7 +103,6 @@ class Rwkv7Config(PretrainedConfig):
         self.num_hidden_layers = num_hidden_layers
         self.attention_hidden_size = attention_hidden_size if attention_hidden_size is not None else hidden_size
         self.head_size = head_size
-        self.head_size_divisor = head_size_divisor
         self.intermediate_size = intermediate_size
         self.lora_rank_decay = lora_rank_decay
         self.lora_rank_iclr = lora_rank_iclr
