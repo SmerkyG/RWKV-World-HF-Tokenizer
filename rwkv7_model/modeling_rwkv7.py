@@ -314,7 +314,7 @@ class Rwkv7SelfAttention(nn.Module):
         self.key = nn.Linear(C, C, bias=False)
         self.value = nn.Linear(C, C, bias=False)
         self.output = nn.Linear(C, C, bias=False)
-        self.ln_x = nn.GroupNorm(H, C, eps=64e-5) # !!! notice eps value !!!
+        self.ln_x = nn.GroupNorm(H, C, eps=self.head_size * 1e-5)
 
 
     def forward(self, hidden, state=None, v_first=None, use_cache=False, seq_mode=True):        
@@ -336,12 +336,17 @@ class Rwkv7SelfAttention(nn.Module):
 
         xx = shifted - x
 
-        xr, xw, xk, xv, xa, xg = x+xx*self.x_r, x+xx*self.x_w, x+xx*self.x_k, x+xx*self.x_v, x+xx*self.x_a, x+xx*self.x_g
+        xr = x+xx*self.x_r
+        xw = x+xx*self.x_w
+        xk = x+xx*self.x_k
+        xv = x+xx*self.x_v
+        xa = x+xx*self.x_a
+        xg = x+xx*self.x_g
 
-        r = xr @ self.receptance.weight
+        r = self.receptance(xr)
         w = torch.tanh(xw @ self.w1) @ self.w2
-        k = xk @ self.key.weight
-        v = xv @ self.value.weight
+        k = self.key(xk)
+        v = self.value(xv)
         a = torch.sigmoid(self.a0 + (xa @ self.a1) @ self.a2)
         g = torch.sigmoid(xg @ self.g1) @ self.g2
 
@@ -365,10 +370,10 @@ class Rwkv7SelfAttention(nn.Module):
             w = -torch.nn.functional.softplus(-(self.w0 + w)) - 0.5
             rwkv7_attn_triton(r, w, k, v, -kk, kk*a, self.head_size)
             
-        xx = torch.nn.functional.group_norm(xx.view(B*T,H*N), num_groups=H, weight=self.ln_x.weight, bias=self.ln_x.bias, eps = N*1e-5).view(B,T,H*N)
+        xx = torch.nn.functional.group_norm(xx.view(B*T,H*N), num_groups=H, weight=self.ln_x.weight, bias=self.ln_x.bias, eps = self.ln_x.eps).view(B,T,H*N)
         #x = x + ((r * k * self.r_k).view(B,T,H,N).sum(dim=-1, keepdim=True) * v.view(B,T,H,N)).view(B,T,H*N)
         xx = xx + ((r.view(B,T,H,-1)*k.view(B,T,H,-1)*self.r_k).sum(dim=-1, keepdim=True) * v.view(B,T,H,-1)).view(B,T,C)
-        xx = (xx * g) @ self.output.weight
+        xx = self.output(xx * g)
 
         if state is not None:
             state[0][self.layer_id] = hidden[:, -1]
