@@ -85,7 +85,7 @@ def convert_state_dict(state_dict):
             name = name.replace("emb.", "embeddings.")
         # ln_0 -> pre_ln (only present at block 0)
         if name.startswith("blocks.0.ln0"):
-            name = name.replace("blocks.0.ln0", "blocks.0.pre_ln")
+            name = name.replace("blocks.0.ln0", "pre_ln")
         # att -> attention
         name = re.sub(r"blocks\.(\d+)\.att", r"blocks.\1.attention", name)
         # ffn -> feed_forward

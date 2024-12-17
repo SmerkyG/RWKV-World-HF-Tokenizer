@@ -429,9 +429,6 @@ class Rwkv7Block(nn.Module):
         self.config = config
         self.layer_id = layer_id
 
-        if layer_id == 0:
-            self.pre_ln = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_epsilon)
-
         self.ln1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_epsilon)
         self.ln2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_epsilon)
 
@@ -439,8 +436,6 @@ class Rwkv7Block(nn.Module):
         self.feed_forward = Rwkv7FeedForward(config, layer_id)
 
     def forward(self, hidden, state=None, v_first=None, use_cache=False, output_attentions=False, seq_mode=True):
-        if self.layer_id == 0:
-            hidden = self.pre_ln(hidden)
         attention, state, v_first = self.attention(self.ln1(hidden), state=state, v_first=v_first, use_cache=use_cache, seq_mode=seq_mode)
         hidden = hidden + attention
 
@@ -667,6 +662,7 @@ class Rwkv7Model(Rwkv7PreTrainedModel):
         super().__init__(config)
 
         self.embeddings = nn.Embedding(config.vocab_size, config.hidden_size)
+        self.pre_ln = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_epsilon)
         self.blocks = nn.ModuleList([Rwkv7Block(config, layer_id=idx) for idx in range(config.num_hidden_layers)])
         self.ln_out = nn.LayerNorm(config.hidden_size)
 
@@ -746,7 +742,7 @@ class Rwkv7Model(Rwkv7PreTrainedModel):
             state.append(state_ffn_x)
 
         seq_mode = inputs_embeds.shape[1] > 1
-        hidden_states = inputs_embeds
+        hidden_states = self.pre_ln(inputs_embeds)
         v_first = None
 
         all_self_attentions = () if output_attentions else None
