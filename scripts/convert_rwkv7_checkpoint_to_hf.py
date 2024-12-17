@@ -152,7 +152,7 @@ def convert_rwkv_checkpoint_to_hf_format(
         num_hidden_layers=NUM_HIDDEN_LAYERS_MAPPING[size],
         hidden_size=HIDEN_SIZE_MAPPING[size],
         architectures = ["Rwkv7ForCausalLM"],
-        automap = {
+        auto_map = {
             "AutoConfig": "configuration_rwkv7.Rwkv7Config",
             "AutoModelForCausalLM": "modeling_rwkv7.Rwkv7ForCausalLM"
         },
