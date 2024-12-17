@@ -25,7 +25,6 @@ import torch
 from huggingface_hub import hf_hub_download
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerFast
-#from transformers.modeling_utils import WEIGHTS_INDEX_NAME, shard_checkpoint
 
 from typing import Dict
 from safetensors.torch import save_file as safe_save_file
@@ -139,6 +138,11 @@ def convert_rwkv_checkpoint_to_hf_format(
         vocab_size=vocab_size,
         num_hidden_layers=NUM_HIDDEN_LAYERS_MAPPING[size],
         hidden_size=HIDEN_SIZE_MAPPING[size],
+        architectures = ["Rwkv7ForCausalLM"],
+        automap = {
+            "AutoConfig": "configuration_rwkv7.Rwkv7Config",
+            "AutoModelForCausalLM": "modeling_rwkv7.Rwkv7ForCausalLM"
+        },
     )
     config.save_pretrained(output_dir)
 

@@ -460,7 +460,7 @@ class Rwkv7PreTrainedModel(PreTrainedModel):
     config_class = Rwkv7Config
     base_model_prefix = "rwkv7"
     _no_split_modules = ["Rwkv7Block"]
-    _keep_in_fp32_modules = [] #"time_decay", "time_first"]
+    _keep_in_fp32_modules = []
     supports_gradient_checkpointing = True
 
     def _init_weights(self, module):
