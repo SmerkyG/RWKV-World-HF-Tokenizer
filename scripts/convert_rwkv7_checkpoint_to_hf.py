@@ -25,27 +25,40 @@ import torch
 from huggingface_hub import hf_hub_download
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerFast
+from safetensors.torch import save_file as safe_save_file
+from transformers.modeling_utils import SAFE_WEIGHTS_NAME, SAFE_WEIGHTS_INDEX_NAME, shard_checkpoint
 
 from typing import Dict
-from safetensors.torch import save_file as safe_save_file
-from huggingface_hub import split_torch_state_dict_into_shards
 
+def save_state_dict_old(state_dict: Dict[str, torch.Tensor], save_directory):
+    shards, index = shard_checkpoint(state_dict, weights_name=SAFE_WEIGHTS_NAME)
+    for shard_filename, shard in shards.items():
+        safe_save_file(shard, os.path.join(save_directory, shard_filename), metadata={'format':'pt'})
+
+    # Save the index as well
+    if index is not None:
+        save_index_file = os.path.join(save_directory, SAFE_WEIGHTS_INDEX_NAME)
+        with open(save_index_file, "w", encoding="utf-8") as f:
+            content = json.dumps(index, indent=2, sort_keys=True) + "\n"
+            f.write(content)
+
+from huggingface_hub import split_torch_state_dict_into_shards
 def save_state_dict(state_dict: Dict[str, torch.Tensor], save_directory: str):
     state_dict_split = split_torch_state_dict_into_shards(state_dict)
-    for filename, tensors in state_dict_split.filename_to_tensors.items():
-        shard = {tensor: state_dict[tensor] for tensor in tensors}
-        safe_save_file(
-            shard,
-            os.path.join(save_directory, filename),
-            metadata={"format": "pt"},
-        )
+    for shard_filename, tensor_names in state_dict_split.filename_to_tensors.items():
+        shard = {name: state_dict[name] for name in tensor_names}
+        safe_save_file(shard, os.path.join(save_directory, shard_filename), metadata={'format':'pt'})
+
+    # Save the index as well
     if state_dict_split.is_sharded:
+        save_index_file = os.path.join(save_directory, SAFE_WEIGHTS_INDEX_NAME)
         index = {
             "metadata": state_dict_split.metadata,
             "weight_map": state_dict_split.tensor_to_filename,
         }
-        with open(os.path.join(save_directory, "model.safetensors.index.json"), "w") as f:
-            f.write(json.dumps(index, indent=2))
+        with open(save_index_file, "w", encoding="utf-8") as f:
+            content = json.dumps(index, indent=2, sort_keys=True) + "\n"
+            f.write(content)
 
 
 from rwkv7_model import configuration_rwkv7

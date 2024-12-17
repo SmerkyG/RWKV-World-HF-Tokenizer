@@ -5,7 +5,7 @@ cd scripts
 python convert_rwkv7_checkpoint_to_hf.py --repo_id BlinkDL/rwkv-7-world \
  --checkpoint_file RWKV-x070-World-1B6-v2-20240208-ctx4096.pth \
  --output_dir ../../rwkv_model/rwkv7-world-1b6/ \
- --tokenizer_file ../rwkv5_world_tokenizer \
+ --tokenizer_file ../rwkv6_world_tokenizer \
  --size 1B6 \
  --is_world_tokenizer True
 
