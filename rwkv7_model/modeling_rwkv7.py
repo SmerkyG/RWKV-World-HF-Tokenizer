@@ -371,7 +371,6 @@ class Rwkv7SelfAttention(nn.Module):
             rwkv7_attn_triton(r, w, k, v, -kk, kk*a, self.head_size)
             
         xx = torch.nn.functional.group_norm(xx.view(B*T,H*N), num_groups=H, weight=self.ln_x.weight, bias=self.ln_x.bias, eps = self.ln_x.eps).view(B,T,H*N)
-        #x = x + ((r * k * self.r_k).view(B,T,H,N).sum(dim=-1, keepdim=True) * v.view(B,T,H,N)).view(B,T,H*N)
         xx = xx + ((r.view(B,T,H,-1)*k.view(B,T,H,-1)*self.r_k).sum(dim=-1, keepdim=True) * v.view(B,T,H,-1)).view(B,T,C)
         xx = self.output(xx * g)
 

@@ -121,7 +121,7 @@ def convert_rwkv_checkpoint_to_hf_format(
     # 1. If possible, build the tokenizer.
     if tokenizer_file is None:
         print("No `--tokenizer_file` provided, we will use the default tokenizer.")
-        vocab_size = 50277
+        vocab_size = 50304 # 50277 rounded up
         tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
     else:
         if is_world_tokenizer:
